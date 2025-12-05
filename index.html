@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equation Chains - Math Puzzle Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+        body { font-family: 'Poppins', sans-serif; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
+    <div id="app"></div>
+    <script>
+        const PUZZLE_DATABASE = {
+            linear: {
+                name: "Linear Basics", icon: "📐", color: "blue",
+                puzzles: [
+                    { id: 1, chain: "2n + 4 = n + n + 4 = (n + 2) × 2", type: "identity", solution: null, explanation: "All three expressions simplify to 2n + 4. The second shows n + n = 2n, and the third uses the distributive property: (n + 2) × 2 = 2n + 4." },
+                    { id: 2, chain: "3n + 2 = 2n + 7 = n + 12", type: "conditional", solution: 5, explanation: "From 3n + 2 = 2n + 7, we subtract 2n from both sides: n + 2 = 7, so n = 5. Verify: 3(5) + 2 = 17, 2(5) + 7 = 17, 5 + 12 = 17 ✓" },
+                    { id: 3, chain: "2n + 5 = 3n + 1 = 4n - 2", type: "invalid", solution: null, explanation: "From the first pair: 2n + 5 = 3n + 1 gives n = 4. But checking the second pair: 3n + 1 = 4n - 2 gives n = 3. Since we get different values, no single n works for all three." }
+                ]
+            },
+            fractions: {
+                name: "Fractions & Decimals", icon: "🍕", color: "green",
+                puzzles: [
+                    { id: 4, chain: "n/2 + n/2 = n = 2n/2", type: "identity", solution: null, explanation: "Adding n/2 + n/2 gives n. Also, 2n/2 simplifies to n. All three expressions equal n." },
+                    { id: 5, chain: "n/2 + 3 = n - 1 = 2n - 9", type: "conditional", solution: 8, explanation: "From n/2 + 3 = n - 1, multiply by 2: n + 6 = 2n - 2, so n = 8. Verify: 8/2 + 3 = 7, 8 - 1 = 7, 2(8) - 9 = 7 ✓" },
+                    { id: 6, chain: "3n/4 = 0.75n = (3 × n)/4", type: "identity", solution: null, explanation: "Since 3/4 = 0.75, all three expressions represent exactly the same value in different forms." }
+                ]
+            },
+            quadratics: {
+                name: "Quadratic Expressions", icon: "📈", color: "purple",
+                puzzles: [
+                    { id: 7, chain: "n² + n² = 2n² = n × 2n", type: "identity", solution: null, explanation: "Adding n² + n² gives 2n². Also n × 2n = 2n² (multiply coefficients). All three equal 2n²." },
+                    { id: 8, chain: "n² + 5 = 2n² - 4 = 3n² - 13", type: "conditional", solution: 3, explanation: "From n² + 5 = 2n² - 4, we get n² = 9, so n = 3 or n = -3. Using n = 3: 9 + 5 = 14, 2(9) - 4 = 14, 3(9) - 13 = 14 ✓" },
+                    { id: 9, chain: "n² + 4n = n(n + 4) = n × n + 4n", type: "identity", solution: null, explanation: "The second expression is the factored form: n(n + 4) = n² + 4n. The third is the expanded form. All represent the same expression." }
+                ]
+            },
+            negatives: {
+                name: "Negative Numbers", icon: "➖", color: "red",
+                puzzles: [
+                    { id: 10, chain: "n - 5 + 5 = n = n + 0", type: "identity", solution: null, explanation: "Subtracting 5 then adding 5 cancels out (additive inverse). Adding 0 changes nothing. Both operations return to n." },
+                    { id: 11, chain: "10 - n = 2n + 1 = 3n - 2", type: "conditional", solution: 3, explanation: "From 10 - n = 2n + 1, we get 9 = 3n, so n = 3. Verify: 10 - 3 = 7, 2(3) + 1 = 7, 3(3) - 2 = 7 ✓" },
+                    { id: 12, chain: "n - (n - 5) = 5 = 10 - 5", type: "identity", solution: null, explanation: "When subtracting (n - 5), distribute the negative: n - n + 5 = 5. Also 10 - 5 = 5. All expressions equal 5 regardless of n." }
+                ]
+            },
+            realworld: {
+                name: "Real-World Problems", icon: "🌍", color: "yellow",
+                puzzles: [
+                    { id: 13, chain: "2n + 5 = (n + n) + 5", type: "identity", solution: null, context: "Cost of 2 items at ₵n each plus ₵5 delivery", explanation: "Both expressions represent the same total cost. 2n means 2 items at ₵n each, and (n + n) is another way to write the same thing." },
+                    { id: 14, chain: "3n + 10 = 4n = 5n - 10", type: "conditional", solution: 10, context: "Three sodas + ₵10 tip = Four sodas = Five sodas - ₵10", explanation: "From 3n + 10 = 4n, we get n = 10. Each soda costs ₵10. Verify: 3(10) + 10 = 40, 4(10) = 40, 5(10) - 10 = 40 ✓" },
+                    { id: 15, chain: "n + 5 = 2(n - 5) = 20", type: "conditional", solution: 15, context: "Kofi's age in 5 years = Twice his age 5 years ago", explanation: "From n + 5 = 2(n - 5), expand: n + 5 = 2n - 10, so n = 15. Kofi is 15 now. In 5 years: 20. Five years ago: 10, and 2(10) = 20 ✓" }
+                ]
+            },
+            patterns: {
+                name: "Algebraic Patterns", icon: "✨", color: "pink",
+                puzzles: [
+                    { id: 16, chain: "n(5 + 3) = 5n + 3n = 8n", type: "identity", solution: null, explanation: "Distributive property: n(5 + 3) = n(8) = 8n. Also 5n + 3n = 8n by combining like terms." },
+                    { id: 17, chain: "(n + 3) + 5 = n + (3 + 5) = n + 8", type: "identity", solution: null, explanation: "Associative property: the grouping of addition doesn't change the result. (n + 3) + 5 = n + 8 and n + (3 + 5) = n + 8." },
+                    { id: 18, chain: "n + (n + 1) + (n + 2) = 3n + 3 = 3(n + 1)", type: "identity", solution: null, explanation: "Sum of three consecutive numbers: n + (n+1) + (n+2) = 3n + 3. Factoring: 3n + 3 = 3(n + 1)." }
+                ]
+            }
+        };
+
+        let gameState = { currentTheme: null, currentPuzzleIndex: 0, totalStars: 0, selectedAnswer: '', inputValue: '', showResult: false, isCorrect: false, stars: 0, hintsUsed: 0 };
+
+        function renderThemeSelection() {
+            const themes = Object.entries(PUZZLE_DATABASE);
+            return `<div class="max-w-6xl mx-auto p-4"><div class="bg-white rounded-lg shadow-2xl p-8 mb-6 fade-in"><div class="flex items-center justify-between mb-6"><div><h1 class="text-5xl font-bold text-gray-800 mb-2">🏆 Equation Chains</h1><p class="text-gray-600 text-lg">Master algebraic thinking through puzzles</p></div><div class="text-right"><div class="text-sm text-gray-600">Total Stars</div><div class="text-4xl font-bold text-yellow-500">⭐ ${gameState.totalStars}</div></div></div></div><div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">${themes.map(([key, theme]) => `<button onclick="selectTheme('${key}')" class="bg-white rounded-lg shadow-lg p-8 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 text-left fade-in"><div class="text-6xl mb-4">${theme.icon}</div><h3 class="text-2xl font-bold text-gray-800 mb-2">${theme.name}</h3><p class="text-gray-600 mb-4">${theme.puzzles.length} puzzles</p><div class="inline-flex items-center text-${theme.color}-600 font-semibold">Start Learning →</div></button>`).join('')}</div><div class="mt-8 bg-white rounded-lg shadow-lg p-6 text-center"><h3 class="text-xl font-bold text-gray-800 mb-2">How to Play</h3><p class="text-gray-600">Determine if each equation chain is an <strong>Identity</strong> (true for all n), <strong>Conditional</strong> (true for specific n), or <strong>Invalid</strong> (no solution).</p></div></div>`;
+        }
+
+        function renderPuzzle() {
+            const theme = PUZZLE_DATABASE[gameState.currentTheme];
+            const puzzle = theme.puzzles[gameState.currentPuzzleIndex];
+            const totalPuzzles = theme.puzzles.length;
+            if (gameState.showResult) return renderResult(theme, puzzle);
+            return `<div class="max-w-3xl mx-auto p-4"><div class="bg-white rounded-lg shadow-2xl p-6 mb-4 fade-in"><button onclick="backToThemes()" class="text-blue-600 hover:text-blue-800 font-semibold mb-4">← Back to Themes</button><div class="flex items-center justify-between mb-4"><div><h2 class="text-3xl font-bold text-gray-800">${theme.icon} ${theme.name}</h2><p class="text-gray-600">Puzzle ${gameState.currentPuzzleIndex + 1} of ${totalPuzzles}</p></div><div class="flex gap-1">${[1, 2, 3].map(i => `<span class="text-3xl">${i <= gameState.stars ? '⭐' : '☆'}</span>`).join('')}</div></div><div class="w-full bg-gray-200 rounded-full h-3 mb-4"><div class="bg-gradient-to-r from-${theme.color}-500 to-${theme.color}-600 h-3 rounded-full transition-all" style="width: ${((gameState.currentPuzzleIndex + 1) / totalPuzzles) * 100}%"></div></div></div><div class="bg-white rounded-lg shadow-2xl p-8 mb-4 fade-in">${puzzle.context ? `<div class="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded"><p class="text-blue-800 font-semibold">📖 ${puzzle.context}</p></div>` : ''}<div class="mb-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg"><p class="text-center text-2xl font-mono font-bold text-gray-800 break-words">${puzzle.chain}</p></div><p class="text-xl font-semibold text-gray-700 mb-4">This equation chain is:</p><div class="space-y-3 mb-6"><label class="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-blue-50 transition-all ${gameState.selectedAnswer === 'identity' ? 'border-blue-500 bg-blue-50' : ''}"><input type="radio" name="answer" value="identity" onchange="selectAnswer('identity')" ${gameState.selectedAnswer === 'identity' ? 'checked' : ''} class="w-5 h-5"><span class="ml-3 text-gray-700"><strong>Identity</strong> - True for all values of n</span></label><label class="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-green-50 transition-all ${gameState.selectedAnswer === 'conditional' ? 'border-green-500 bg-green-50' : ''}"><input type="radio" name="answer" value="conditional" onchange="selectAnswer('conditional')" ${gameState.selectedAnswer === 'conditional' ? 'checked' : ''} class="w-5 h-5"><span class="ml-3 text-gray-700"><strong>Conditional</strong> - True for specific value(s)</span></label><label class="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-red-50 transition-all ${gameState.selectedAnswer === 'invalid' ? 'border-red-500 bg-red-50' : ''}"><input type="radio" name="answer" value="invalid" onchange="selectAnswer('invalid')" ${gameState.selectedAnswer === 'invalid' ? 'checked' : ''} class="w-5 h-5"><span class="ml-3 text-gray-700"><strong>Invalid</strong> - No solution exists</span></label></div>${gameState.selectedAnswer === 'conditional' ? `<div class="mb-6 p-4 bg-green-50 rounded-lg"><label class="block text-gray-700 font-semibold mb-2">If conditional, what is n?</label><input type="number" id="nInput" value="${gameState.inputValue}" oninput="updateInput(this.value)" class="w-full p-3 border-2 border-green-300 rounded-lg text-xl text-center font-bold" placeholder="Enter n"></div>` : ''}${gameState.hintsUsed > 0 ? `<div class="mb-6 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg"><p class="font-semibold text-yellow-800">💡 Hint:</p><p class="text-yellow-700">Try simplifying each expression first and see if they're all equivalent.</p></div>` : ''}<div class="flex gap-3"><button onclick="useHint()" ${gameState.hintsUsed >= 3 ? 'disabled' : ''} class="flex-1 py-3 px-6 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 text-white font-semibold rounded-lg transition-all">💡 Hint (${3 - gameState.hintsUsed} left)</button><button onclick="checkAnswer()" ${!gameState.selectedAnswer || (gameState.selectedAnswer === 'conditional' && !gameState.inputValue) ? 'disabled' : ''} class="flex-1 py-3 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-semibold rounded-lg transition-all">Check Answer</button></div></div></div>`;
+        }
+
+        function renderResult(theme, puzzle) {
+            return `<div class="max-w-3xl mx-auto p-4"><div class="bg-white rounded-lg shadow-2xl p-6 mb-4 fade-in"><button onclick="backToThemes()" class="text-blue-600 hover:text-blue-800 font-semibold mb-4">← Back to Themes</button><h2 class="text-3xl font-bold text-gray-800">${theme.icon} ${theme.name}</h2></div><div class="bg-white rounded-lg shadow-2xl p-8 fade-in"><div class="text-center mb-6 p-8 rounded-lg ${gameState.isCorrect ? 'bg-green-50' : 'bg-red-50'}"><h2 class="text-4xl font-bold mb-4 ${gameState.isCorrect ? 'text-green-600' : 'text-red-600'}">${gameState.isCorrect ? '✓ CORRECT!' : '✗ INCORRECT'}</h2>${gameState.isCorrect ? `<div class="flex justify-center gap-2 mb-4">${[1, 2, 3].map(i => `<span class="text-5xl">${i <= gameState.stars ? '⭐' : ''}</span>`).join('')}</div><p class="text-xl text-green-700">You earned ${gameState.stars} star${gameState.stars !== 1 ? 's' : ''}!</p>` : `<p class="text-xl text-red-700">Review the solution below</p>`}</div><div class="mb-6 p-6 bg-blue-50 rounded-lg"><h3 class="text-xl font-bold text-gray-800 mb-3">📚 Solution:</h3><p class="text-gray-700 leading-relaxed text-lg">${puzzle.explanation}</p></div><div class="flex gap-3"><button onclick="retryPuzzle()" class="flex-1 py-3 px-6 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all">🔄 Retry</button><button onclick="nextPuzzle()" class="flex-1 py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-all">${gameState.currentPuzzleIndex < theme.puzzles.length - 1 ? 'Next Puzzle →' : 'Complete Theme ✓'}</button></div></div></div>`;
+        }
+
+        function selectTheme(theme) { gameState.currentTheme = theme; gameState.currentPuzzleIndex = 0; gameState.selectedAnswer = ''; gameState.inputValue = ''; gameState.showResult = false; gameState.hintsUsed = 0; gameState.stars = 0; render(); }
+        function backToThemes() { gameState.currentTheme = null; render(); }
+        function selectAnswer(answer) { gameState.selectedAnswer = answer; if (answer !== 'conditional') gameState.inputValue = ''; render(); }
+        function updateInput(value) { gameState.inputValue = value; }
+        function useHint() { if (gameState.hintsUsed < 3) { gameState.hintsUsed++; render(); } }
+        function checkAnswer() {
+            const theme = PUZZLE_DATABASE[gameState.currentTheme];
+            const puzzle = theme.puzzles[gameState.currentPuzzleIndex];
+            let correct = false;
+            if (puzzle.type === 'identity') correct = gameState.selectedAnswer === 'identity';
+            else if (puzzle.type === 'conditional') correct = gameState.selectedAnswer === 'conditional' && parseInt(gameState.inputValue) === puzzle.solution;
+            else if (puzzle.type === 'invalid') correct = gameState.selectedAnswer === 'invalid';
+            gameState.isCorrect = correct;
+            if (correct) {
+                if (gameState.hintsUsed === 0) gameState.stars = 3;
+                else if (gameState.hintsUsed === 1) gameState.stars = 2;
+                else gameState.stars = 1;
+                gameState.totalStars += gameState.stars;
+            }
+            gameState.showResult = true;
+            render();
+        }
+        function retryPuzzle() { gameState.selectedAnswer = ''; gameState.inputValue = ''; gameState.showResult = false; gameState.isCorrect = false; gameState.stars = 0; gameState.hintsUsed = 0; render(); }
+        function nextPuzzle() {
+            const theme = PUZZLE_DATABASE[gameState.currentTheme];
+            if (gameState.currentPuzzleIndex < theme.puzzles.length - 1) { gameState.currentPuzzleIndex++; retryPuzzle(); }
+            else backToThemes();
+        }
+        function render() { document.getElementById('app').innerHTML = !gameState.currentTheme ? renderThemeSelection() : renderPuzzle(); }
+        render();
+    </script>
+</body>
+</html>

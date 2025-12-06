@@ -1,6 +1,248 @@
 <!DOCTYPE html>
 <html lang="en">
+<head>DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equation Chains - Enhanced Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap');
+        body { font-family: 'Poppins', sans-serif; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+        @keyframes starPop { 0% { transform: scale(0) rotate(0deg); } 50% { transform: scale(1.2) rotate(180deg); } 100% { transform: scale(1) rotate(360deg); } }
+        @keyframes confetti { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        .slide-in { animation: slideIn 0.5s ease-out; }
+        .bounce { animation: bounce 0.6s ease-in-out; }
+        .pulse { animation: pulse 1s ease-in-out infinite; }
+        .shake { animation: shake 0.5s ease-in-out; }
+        .star-pop { animation: starPop 0.6s ease-out; }
+        .confetti { animation: confetti 2s ease-out forwards; }
+        .progress-bar { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+        .theme-card { transition: all 0.3s ease; }
+        .theme-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
+        .locked { opacity: 0.5; position: relative; }
+        .locked::after { content: '🔒'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 4rem; }
+        .sound-btn { position: fixed; top: 20px; right: 20px; z-index: 1000; background: white; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.3s; }
+        .sound-btn:hover { transform: scale(1.1); }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
+    <div id="soundToggle" class="sound-btn" onclick="window.toggleSound()">
+        <span id="soundIcon">🔊</span>
+    </div>
+    <div id="app"></div>
+    <script>
+        const soundEnabled = { value: true };
+        const sounds = {
+            click: () => playBeep(200, 0.1, 'sine'),
+            correct: () => playMelody([{freq: 523, duration: 0.1},{freq: 659, duration: 0.1},{freq: 784, duration: 0.2}]),
+            wrong: () => playBeep(150, 0.3, 'sawtooth'),
+            star: () => playBeep(800, 0.15, 'sine'),
+            unlock: () => playMelody([{freq: 392, duration: 0.1},{freq: 523, duration: 0.1},{freq: 659, duration: 0.15}]),
+            complete: () => playMelody([{freq: 523, duration: 0.1},{freq: 659, duration: 0.1},{freq: 784, duration: 0.1},{freq: 1047, duration: 0.3}])
+        };
+        
+        function playBeep(frequency, duration, type = 'sine') {
+            if (!soundEnabled.value) return;
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.value = frequency;
+                oscillator.type = type;
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + duration);
+            } catch(e) { console.log('Audio not supported'); }
+        }
+        
+        function playMelody(notes) {
+            if (!soundEnabled.value) return;
+            let time = 0;
+            notes.forEach(note => {
+                setTimeout(() => playBeep(note.freq, note.duration), time * 1000);
+                time += note.duration;
+            });
+        }
+        
+        window.toggleSound = function() {
+            soundEnabled.value = !soundEnabled.value;
+            document.getElementById('soundIcon').textContent = soundEnabled.value ? '🔊' : '🔇';
+            if (soundEnabled.value) sounds.click();
+        }
+        
+        function createConfetti() {
+            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.style.cssText = `position:fixed;width:10px;height:10px;background:${colors[Math.floor(Math.random()*colors.length)]};left:${Math.random()*100}%;top:-10px;z-index:9999`;
+                confetti.className = 'confetti';
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 2000);
+            }
+        }
+
+        const PUZZLE_DATABASE = {
+            linear: { name: "Linear Basics", icon: "📐", color: "blue", level: 1, requiredStars: 0,
+                puzzles: [
+                    { id: 1, chain: "2n + 4 = n + n + 4 = (n + 2) × 2", type: "identity", solution: null, explanation: "All three expressions simplify to 2n + 4." },
+                    { id: 2, chain: "3n + 2 = 2n + 7 = n + 12", type: "conditional", solution: 5, explanation: "From 3n + 2 = 2n + 7, we get n = 5. All equal 17." },
+                    { id: 3, chain: "2n + 5 = 3n + 1 = 4n - 2", type: "invalid", solution: null, explanation: "First pair gives n = 4, second gives n = 3. Inconsistent!" }
+                ]
+            },
+            fractions: { name: "Fractions & Decimals", icon: "🍕", color: "green", level: 2, requiredStars: 6,
+                puzzles: [
+                    { id: 4, chain: "n/2 + n/2 = n = 2n/2", type: "identity", solution: null, explanation: "All three equal n in different forms." },
+                    { id: 5, chain: "n/2 + 3 = n - 1 = 2n - 9", type: "conditional", solution: 8, explanation: "From n/2 + 3 = n - 1, we get n = 8. All equal 7." },
+                    { id: 6, chain: "3n/4 = 0.75n = (3 × n)/4", type: "identity", solution: null, explanation: "3/4 = 0.75, so all are equivalent." }
+                ]
+            },
+            quadratics: { name: "Quadratic Expressions", icon: "📈", color: "purple", level: 3, requiredStars: 12,
+                puzzles: [
+                    { id: 7, chain: "n² + n² = 2n² = n × 2n", type: "identity", solution: null, explanation: "All equal 2n²." },
+                    { id: 8, chain: "n² + 5 = 2n² - 4 = 3n² - 13", type: "conditional", solution: 3, explanation: "From n² + 5 = 2n² - 4, we get n² = 9, so n = 3." },
+                    { id: 9, chain: "n² + 4n = n(n + 4) = n × n + 4n", type: "identity", solution: null, explanation: "Factored and expanded forms." }
+                ]
+            },
+            negatives: { name: "Negative Numbers", icon: "➖", color: "red", level: 4, requiredStars: 18,
+                puzzles: [
+                    { id: 10, chain: "n - 5 + 5 = n = n + 0", type: "identity", solution: null, explanation: "Additive inverse and identity." },
+                    { id: 11, chain: "10 - n = 2n + 1 = 3n - 2", type: "conditional", solution: 3, explanation: "All equal 7 when n = 3." },
+                    { id: 12, chain: "n - (n - 5) = 5 = 10 - 5", type: "identity", solution: null, explanation: "Distributing negative: n - n + 5 = 5." }
+                ]
+            },
+            realworld: { name: "Real-World Problems", icon: "🌍", color: "yellow", level: 5, requiredStars: 24,
+                puzzles: [
+                    { id: 13, chain: "2n + 5 = (n + n) + 5", type: "identity", solution: null, context: "Shopping: 2 items + ₵5 delivery", explanation: "Both represent the same cost." },
+                    { id: 14, chain: "3n + 10 = 4n = 5n - 10", type: "conditional", solution: 10, context: "Soda pricing", explanation: "Each soda costs ₵10." },
+                    { id: 15, chain: "n + 5 = 2(n - 5) = 20", type: "conditional", solution: 15, context: "Age problem", explanation: "Kofi is 15 years old." }
+                ]
+            },
+            patterns: { name: "Algebraic Patterns", icon: "✨", color: "pink", level: 6, requiredStars: 30,
+                puzzles: [
+                    { id: 16, chain: "n(5 + 3) = 5n + 3n = 8n", type: "identity", solution: null, explanation: "Distributive property." },
+                    { id: 17, chain: "(n + 3) + 5 = n + (3 + 5) = n + 8", type: "identity", solution: null, explanation: "Associative property." },
+                    { id: 18, chain: "n + (n + 1) + (n + 2) = 3n + 3 = 3(n + 1)", type: "identity", solution: null, explanation: "Consecutive numbers pattern." }
+                ]
+            }
+        };
+
+        let gameState = { currentTheme: null, currentPuzzleIndex: 0, totalStars: 0, themeStars: {}, completedPuzzles: {}, selectedAnswer: '', inputValue: '', showResult: false, isCorrect: false, stars: 0, hintsUsed: 0, unlockedThemes: ['linear'] };
+        Object.keys(PUZZLE_DATABASE).forEach(key => { gameState.themeStars[key] = 0; });
+
+        function isThemeUnlocked(themeKey) {
+            return gameState.totalStars >= PUZZLE_DATABASE[themeKey].requiredStars;
+        }
+
+        function renderProgressionRoadmap() {
+            const themes = Object.entries(PUZZLE_DATABASE);
+            return `<div class="mb-8 bg-white rounded-lg shadow-2xl p-6"><h2 class="text-2xl font-bold text-gray-800 mb-4">🗺️ Learning Roadmap</h2><div class="relative">${themes.map(([key, theme], idx) => {
+                const unlocked = isThemeUnlocked(key);
+                const stars = gameState.themeStars[key] || 0;
+                const totalPossible = theme.puzzles.length * 3;
+                const progress = (stars / totalPossible) * 100;
+                return `<div class="flex items-center gap-4 mb-4 ${idx > 0 ? 'mt-4 pt-4 border-t-2 border-gray-200' : ''}"><div class="w-16 h-16 rounded-full flex items-center justify-center text-3xl ${unlocked ? 'bg-gradient-to-br from-blue-400 to-purple-500' : 'bg-gray-300'}">${unlocked ? theme.icon : '🔒'}</div><div class="flex-1"><div class="flex items-center justify-between mb-1"><div><h3 class="font-bold text-lg ${unlocked ? 'text-gray-800' : 'text-gray-500'}">${theme.name}</h3><p class="text-sm text-gray-600">Level ${theme.level} ${!unlocked ? `• Requires ${theme.requiredStars} ⭐` : ''}</p></div><div class="text-right"><div class="font-bold text-yellow-500">${stars}/${totalPossible} ⭐</div></div></div><div class="w-full bg-gray-200 rounded-full h-2"><div class="progress-bar bg-gradient-to-r from-${theme.color}-400 to-${theme.color}-600 h-2 rounded-full" style="width: ${progress}%"></div></div></div></div>`;
+            }).join('')}</div></div>`;
+        }
+
+        function renderThemeSelection() {
+            const themes = Object.entries(PUZZLE_DATABASE);
+            return `<div class="max-w-6xl mx-auto p-4"><div class="bg-white rounded-lg shadow-2xl p-8 mb-6 fade-in"><div class="flex items-center justify-between mb-6"><div><h1 class="text-5xl font-bold text-gray-800 mb-2 bounce">🏆 Equation Chains</h1><p class="text-gray-600 text-lg">Master algebraic thinking</p></div><div class="text-right"><div class="text-sm text-gray-600">Total Stars</div><div class="text-4xl font-bold text-yellow-500 pulse">⭐ ${gameState.totalStars}</div></div></div></div>${renderProgressionRoadmap()}<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">${themes.map(([key, theme]) => {
+                const unlocked = isThemeUnlocked(key);
+                const stars = gameState.themeStars[key] || 0;
+                const totalPossible = theme.puzzles.length * 3;
+                return `<button onclick="${unlocked ? `selectTheme('${key}')` : `showLockedMessage(${theme.requiredStars})`}" class="theme-card bg-white rounded-lg shadow-lg p-8 text-left slide-in ${!unlocked ? 'locked' : ''}"><div class="text-6xl mb-4">${theme.icon}</div><h3 class="text-2xl font-bold text-gray-800 mb-2">${theme.name}</h3><p class="text-gray-600 mb-3">Level ${theme.level} • ${theme.puzzles.length} puzzles</p><div class="flex items-center gap-2 mb-2"><div class="text-yellow-500 font-bold">${stars}/${totalPossible} ⭐</div></div>${unlocked ? `<div class="inline-flex items-center text-${theme.color}-600 font-semibold">Start →</div>` : `<div class="text-red-600 font-semibold">🔒 ${theme.requiredStars} stars</div>`}</button>`;
+            }).join('')}</div><div class="mt-8 bg-white rounded-lg shadow-lg p-6 text-center fade-in"><h3 class="text-xl font-bold text-gray-800 mb-2">How to Play</h3><p class="text-gray-600">Determine if each chain is <strong>Identity</strong>, <strong>Conditional</strong>, or <strong>Invalid</strong>. Earn stars to unlock themes!</p></div></div>`;
+        }
+
+        function showLockedMessage(required) {
+            sounds.wrong();
+            alert(`🔒 Locked! Earn ${required} stars to unlock.`);
+        }
+
+        function renderPuzzle() {
+            const theme = PUZZLE_DATABASE[gameState.currentTheme];
+            const puzzle = theme.puzzles[gameState.currentPuzzleIndex];
+            const totalPuzzles = theme.puzzles.length;
+            if (gameState.showResult) return renderResult(theme, puzzle);
+            return `<div class="max-w-3xl mx-auto p-4"><div class="bg-white rounded-lg shadow-2xl p-6 mb-4 slide-in"><button onclick="backToThemes()" class="text-blue-600 hover:text-blue-800 font-semibold mb-4">← Back</button><div class="flex items-center justify-between mb-4"><div><h2 class="text-3xl font-bold text-gray-800">${theme.icon} ${theme.name}</h2><p class="text-gray-600">Puzzle ${gameState.currentPuzzleIndex + 1}/${totalPuzzles}</p></div><div class="flex gap-1">${[1, 2, 3].map(i => `<span class="text-3xl ${i <= gameState.stars ? 'star-pop' : ''}">${i <= gameState.stars ? '⭐' : '☆'}</span>`).join('')}</div></div><div class="w-full bg-gray-200 rounded-full h-3 mb-4"><div class="progress-bar bg-gradient-to-r from-${theme.color}-500 to-${theme.color}-600 h-3 rounded-full" style="width:${((gameState.currentPuzzleIndex + 1) / totalPuzzles) * 100}%"></div></div></div><div class="bg-white rounded-lg shadow-2xl p-8 mb-4 fade-in">${puzzle.context ? `<div class="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded bounce"><p class="text-blue-800 font-semibold">📖 ${puzzle.context}</p></div>` : ''}<div class="mb-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg pulse"><p class="text-center text-2xl font-mono font-bold text-gray-800 break-words">${puzzle.chain}</p></div><p class="text-xl font-semibold text-gray-700 mb-4">This chain is:</p><div class="space-y-3 mb-6">${['identity', 'conditional', 'invalid'].map(type => `<label class="flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${gameState.selectedAnswer === type ? 'border-blue-500 bg-blue-50' : ''}"><input type="radio" name="answer" value="${type}" onchange="selectAnswer('${type}')" ${gameState.selectedAnswer === type ? 'checked' : ''} class="w-5 h-5"><span class="ml-3 text-gray-700"><strong>${type.charAt(0).toUpperCase() + type.slice(1)}</strong></span></label>`).join('')}</div>${gameState.selectedAnswer === 'conditional' ? `<div class="mb-6 p-4 bg-green-50 rounded-lg fade-in"><label class="block text-gray-700 font-semibold mb-2">What is n?</label><input type="number" id="nInput" value="${gameState.inputValue}" oninput="updateInput(this.value)" class="w-full p-3 border-2 border-green-300 rounded-lg text-xl text-center font-bold" placeholder="Enter n"></div>` : ''}${gameState.hintsUsed > 0 ? `<div class="mb-6 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg bounce"><p class="font-semibold text-yellow-800">💡 Hint:</p><p class="text-yellow-700">Simplify each expression first!</p></div>` : ''}<div class="flex gap-3"><button onclick="useHint()" ${gameState.hintsUsed >= 3 ? 'disabled' : ''} class="flex-1 py-3 px-6 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 text-white font-semibold rounded-lg transition-all">💡 Hint (${3 - gameState.hintsUsed})</button><button onclick="checkAnswer()" ${!gameState.selectedAnswer || (gameState.selectedAnswer === 'conditional' && !gameState.inputValue) ? 'disabled' : ''} class="flex-1 py-3 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-semibold rounded-lg transition-all">Check</button></div></div></div>`;
+        }
+
+        function renderResult(theme, puzzle) {
+            return `<div class="max-w-3xl mx-auto p-4"><div class="bg-white rounded-lg shadow-2xl p-6 mb-4 slide-in"><button onclick="backToThemes()" class="text-blue-600 hover:text-blue-800 font-semibold mb-4">← Back</button><h2 class="text-3xl font-bold text-gray-800">${theme.icon} ${theme.name}</h2></div><div class="bg-white rounded-lg shadow-2xl p-8 fade-in"><div class="text-center mb-6 p-8 rounded-lg ${gameState.isCorrect ? 'bg-green-50' : 'bg-red-50 shake'}"><h2 class="text-4xl font-bold mb-4 ${gameState.isCorrect ? 'text-green-600' : 'text-red-600'}">${gameState.isCorrect ? '✓ CORRECT!' : '✗ INCORRECT'}</h2>${gameState.isCorrect ? `<div class="flex justify-center gap-2 mb-4">${[1, 2, 3].map(i => `<span class="text-5xl star-pop">${i <= gameState.stars ? '⭐' : ''}</span>`).join('')}</div><p class="text-xl text-green-700">${gameState.stars} star${gameState.stars !== 1 ? 's' : ''}!</p>` : `<p class="text-xl text-red-700">Review solution</p>`}</div><div class="mb-6 p-6 bg-blue-50 rounded-lg"><h3 class="text-xl font-bold text-gray-800 mb-3">📚 Solution:</h3><p class="text-gray-700 leading-relaxed text-lg">${puzzle.explanation}</p></div><div class="flex gap-3"><button onclick="retryPuzzle()" class="flex-1 py-3 px-6 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all">🔄 Retry</button><button onclick="nextPuzzle()" class="flex-1 py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-all">${gameState.currentPuzzleIndex < theme.puzzles.length - 1 ? 'Next →' : 'Complete ✓'}</button></div></div></div>`;
+        }
+
+        function selectTheme(theme) { sounds.click(); gameState.currentTheme = theme; gameState.currentPuzzleIndex = 0; gameState.selectedAnswer = ''; gameState.inputValue = ''; gameState.showResult = false; gameState.hintsUsed = 0; gameState.stars = 0; render(); }
+        function backToThemes() { sounds.click(); gameState.currentTheme = null; render(); }
+        function selectAnswer(answer) { sounds.click(); gameState.selectedAnswer = answer; if (answer !== 'conditional') gameState.inputValue = ''; render(); }
+        function updateInput(value) { gameState.inputValue = value; }
+        function useHint() { sounds.click(); if (gameState.hintsUsed < 3) { gameState.hintsUsed++; render(); } }
+        function checkAnswer() {
+            const theme = PUZZLE_DATABASE[gameState.currentTheme];
+            const puzzle = theme.puzzles[gameState.currentPuzzleIndex];
+            let correct = false;
+            if (puzzle.type === 'identity') correct = gameState.selectedAnswer === 'identity';
+            else if (puzzle.type === 'conditional') correct = gameState.selectedAnswer === 'conditional' && parseInt(gameState.inputValue) === puzzle.solution;
+            else if (puzzle.type === 'invalid') correct = gameState.selectedAnswer === 'invalid';
+            gameState.isCorrect = correct;
+            if (correct) {
+                sounds.correct();
+                if (gameState.hintsUsed === 0) gameState.stars = 3;
+                else if (gameState.hintsUsed === 1) gameState.stars = 2;
+                else gameState.stars = 1;
+                gameState.totalStars += gameState.stars;
+                gameState.themeStars[gameState.currentTheme] = (gameState.themeStars[gameState.currentTheme] || 0) + gameState.stars;
+                for (let i = 0; i < gameState.stars; i++) {
+                    setTimeout(() => sounds.star(), i * 200);
+                }
+                Object.keys(PUZZLE_DATABASE).forEach(key => {
+                    if (!gameState.unlockedThemes.includes(key) && isThemeUnlocked(key)) {
+                        gameState.unlockedThemes.push(key);
+                        setTimeout(() => {
+                            sounds.unlock();
+                            alert(`🎉 Unlocked: ${PUZZLE_DATABASE[key].name}!`);
+                        }, 1000);
+                    }
+                });
+                const themeCompleted = gameState.currentPuzzleIndex === theme.puzzles.length - 1;
+                if (themeCompleted) {
+                    setTimeout(() => {
+                        sounds.complete();
+                        createConfetti();
+                    }, 800);
+                }
+            } else {
+                sounds.wrong();
+            }
+            gameState.showResult = true;
+            render();
+        }
+        function retryPuzzle() { sounds.click(); gameState.selectedAnswer = ''; gameState.inputValue = ''; gameState.showResult = false; gameState.isCorrect = false; gameState.stars = 0; gameState.hintsUsed = 0; render(); }
+        function nextPuzzle() {
+            sounds.click();
+            const theme = PUZZLE_DATABASE[gameState.currentTheme];
+            if (gameState.currentPuzzleIndex < theme.puzzles.length - 1) {
+                gameState.currentPuzzleIndex++;
+                retryPuzzle();
+            } else {
+                backToThemes();
+            }
+        }
+        function render() { document.getElementById('app').innerHTML = !gameState.currentTheme ? renderThemeSelection() : renderPuzzle(); }
+        render();
+    </script>
+</body>
+</html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Equation Chains - Math Puzzle Game</title>
@@ -81,43 +323,4 @@
             const puzzle = theme.puzzles[gameState.currentPuzzleIndex];
             const totalPuzzles = theme.puzzles.length;
             if (gameState.showResult) return renderResult(theme, puzzle);
-            return `<div class="max-w-3xl mx-auto p-4"><div class="bg-white rounded-lg shadow-2xl p-6 mb-4 fade-in"><button onclick="backToThemes()" class="text-blue-600 hover:text-blue-800 font-semibold mb-4">← Back to Themes</button><div class="flex items-center justify-between mb-4"><div><h2 class="text-3xl font-bold text-gray-800">${theme.icon} ${theme.name}</h2><p class="text-gray-600">Puzzle ${gameState.currentPuzzleIndex + 1} of ${totalPuzzles}</p></div><div class="flex gap-1">${[1, 2, 3].map(i => `<span class="text-3xl">${i <= gameState.stars ? '⭐' : '☆'}</span>`).join('')}</div></div><div class="w-full bg-gray-200 rounded-full h-3 mb-4"><div class="bg-gradient-to-r from-${theme.color}-500 to-${theme.color}-600 h-3 rounded-full transition-all" style="width: ${((gameState.currentPuzzleIndex + 1) / totalPuzzles) * 100}%"></div></div></div><div class="bg-white rounded-lg shadow-2xl p-8 mb-4 fade-in">${puzzle.context ? `<div class="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded"><p class="text-blue-800 font-semibold">📖 ${puzzle.context}</p></div>` : ''}<div class="mb-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg"><p class="text-center text-2xl font-mono font-bold text-gray-800 break-words">${puzzle.chain}</p></div><p class="text-xl font-semibold text-gray-700 mb-4">This equation chain is:</p><div class="space-y-3 mb-6"><label class="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-blue-50 transition-all ${gameState.selectedAnswer === 'identity' ? 'border-blue-500 bg-blue-50' : ''}"><input type="radio" name="answer" value="identity" onchange="selectAnswer('identity')" ${gameState.selectedAnswer === 'identity' ? 'checked' : ''} class="w-5 h-5"><span class="ml-3 text-gray-700"><strong>Identity</strong> - True for all values of n</span></label><label class="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-green-50 transition-all ${gameState.selectedAnswer === 'conditional' ? 'border-green-500 bg-green-50' : ''}"><input type="radio" name="answer" value="conditional" onchange="selectAnswer('conditional')" ${gameState.selectedAnswer === 'conditional' ? 'checked' : ''} class="w-5 h-5"><span class="ml-3 text-gray-700"><strong>Conditional</strong> - True for specific value(s)</span></label><label class="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-red-50 transition-all ${gameState.selectedAnswer === 'invalid' ? 'border-red-500 bg-red-50' : ''}"><input type="radio" name="answer" value="invalid" onchange="selectAnswer('invalid')" ${gameState.selectedAnswer === 'invalid' ? 'checked' : ''} class="w-5 h-5"><span class="ml-3 text-gray-700"><strong>Invalid</strong> - No solution exists</span></label></div>${gameState.selectedAnswer === 'conditional' ? `<div class="mb-6 p-4 bg-green-50 rounded-lg"><label class="block text-gray-700 font-semibold mb-2">If conditional, what is n?</label><input type="number" id="nInput" value="${gameState.inputValue}" oninput="updateInput(this.value)" class="w-full p-3 border-2 border-green-300 rounded-lg text-xl text-center font-bold" placeholder="Enter n"></div>` : ''}${gameState.hintsUsed > 0 ? `<div class="mb-6 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg"><p class="font-semibold text-yellow-800">💡 Hint:</p><p class="text-yellow-700">Try simplifying each expression first and see if they're all equivalent.</p></div>` : ''}<div class="flex gap-3"><button onclick="useHint()" ${gameState.hintsUsed >= 3 ? 'disabled' : ''} class="flex-1 py-3 px-6 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 text-white font-semibold rounded-lg transition-all">💡 Hint (${3 - gameState.hintsUsed} left)</button><button onclick="checkAnswer()" ${!gameState.selectedAnswer || (gameState.selectedAnswer === 'conditional' && !gameState.inputValue) ? 'disabled' : ''} class="flex-1 py-3 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-semibold rounded-lg transition-all">Check Answer</button></div></div></div>`;
-        }
-
-        function renderResult(theme, puzzle) {
-            return `<div class="max-w-3xl mx-auto p-4"><div class="bg-white rounded-lg shadow-2xl p-6 mb-4 fade-in"><button onclick="backToThemes()" class="text-blue-600 hover:text-blue-800 font-semibold mb-4">← Back to Themes</button><h2 class="text-3xl font-bold text-gray-800">${theme.icon} ${theme.name}</h2></div><div class="bg-white rounded-lg shadow-2xl p-8 fade-in"><div class="text-center mb-6 p-8 rounded-lg ${gameState.isCorrect ? 'bg-green-50' : 'bg-red-50'}"><h2 class="text-4xl font-bold mb-4 ${gameState.isCorrect ? 'text-green-600' : 'text-red-600'}">${gameState.isCorrect ? '✓ CORRECT!' : '✗ INCORRECT'}</h2>${gameState.isCorrect ? `<div class="flex justify-center gap-2 mb-4">${[1, 2, 3].map(i => `<span class="text-5xl">${i <= gameState.stars ? '⭐' : ''}</span>`).join('')}</div><p class="text-xl text-green-700">You earned ${gameState.stars} star${gameState.stars !== 1 ? 's' : ''}!</p>` : `<p class="text-xl text-red-700">Review the solution below</p>`}</div><div class="mb-6 p-6 bg-blue-50 rounded-lg"><h3 class="text-xl font-bold text-gray-800 mb-3">📚 Solution:</h3><p class="text-gray-700 leading-relaxed text-lg">${puzzle.explanation}</p></div><div class="flex gap-3"><button onclick="retryPuzzle()" class="flex-1 py-3 px-6 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all">🔄 Retry</button><button onclick="nextPuzzle()" class="flex-1 py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-all">${gameState.currentPuzzleIndex < theme.puzzles.length - 1 ? 'Next Puzzle →' : 'Complete Theme ✓'}</button></div></div></div>`;
-        }
-
-        function selectTheme(theme) { gameState.currentTheme = theme; gameState.currentPuzzleIndex = 0; gameState.selectedAnswer = ''; gameState.inputValue = ''; gameState.showResult = false; gameState.hintsUsed = 0; gameState.stars = 0; render(); }
-        function backToThemes() { gameState.currentTheme = null; render(); }
-        function selectAnswer(answer) { gameState.selectedAnswer = answer; if (answer !== 'conditional') gameState.inputValue = ''; render(); }
-        function updateInput(value) { gameState.inputValue = value; }
-        function useHint() { if (gameState.hintsUsed < 3) { gameState.hintsUsed++; render(); } }
-        function checkAnswer() {
-            const theme = PUZZLE_DATABASE[gameState.currentTheme];
-            const puzzle = theme.puzzles[gameState.currentPuzzleIndex];
-            let correct = false;
-            if (puzzle.type === 'identity') correct = gameState.selectedAnswer === 'identity';
-            else if (puzzle.type === 'conditional') correct = gameState.selectedAnswer === 'conditional' && parseInt(gameState.inputValue) === puzzle.solution;
-            else if (puzzle.type === 'invalid') correct = gameState.selectedAnswer === 'invalid';
-            gameState.isCorrect = correct;
-            if (correct) {
-                if (gameState.hintsUsed === 0) gameState.stars = 3;
-                else if (gameState.hintsUsed === 1) gameState.stars = 2;
-                else gameState.stars = 1;
-                gameState.totalStars += gameState.stars;
-            }
-            gameState.showResult = true;
-            render();
-        }
-        function retryPuzzle() { gameState.selectedAnswer = ''; gameState.inputValue = ''; gameState.showResult = false; gameState.isCorrect = false; gameState.stars = 0; gameState.hintsUsed = 0; render(); }
-        function nextPuzzle() {
-            const theme = PUZZLE_DATABASE[gameState.currentTheme];
-            if (gameState.currentPuzzleIndex < theme.puzzles.length - 1) { gameState.currentPuzzleIndex++; retryPuzzle(); }
-            else backToThemes();
-        }
-        function render() { document.getElementById('app').innerHTML = !gameState.currentTheme ? renderThemeSelection() : renderPuzzle(); }
-        render();
-    </script>
-</body>
-</html>
+            return `<div class="max-w-3xl mx-auto p-4"><div class="bg-white rounded-lg shadow-2xl p-6 mb-4 fade-in"><button onclick="backToThemes()" class="text-blue-600 hover:text-blue-800 font-semibold mb-4">← Back to Themes</button><div class="flex items-center justify-between mb-4"><div><h2 class="text-3xl font-bold text-gray-800">${theme.icon} ${theme.name}</h2><p class="text-gray-600">Puzzle ${gameState.currentPuzzleIndex + 1} of ${totalPuzzles}</p></div><div class="flex gap-1">${[1, 2, 3].map(i => `<span class="text-3xl">${i <= gameState.stars ? '⭐' : '☆'}</span>`).join('')}</div></div><div class="w-full bg-gray-200 rounded-full h-3 mb-4"><div class="bg-gradient-to-r from-${theme.color}-500 to-${theme.color}-600 h-3 rounded-full transition-all" style="width: ${((gameState.currentPuzzleIndex + 1) / totalPuzzles) * 100}%"></div></div></div><div class="bg-white rounded-lg shadow-2xl p-8 mb-4 fade-in">${puzzle.context ? `<div class="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded"><p class="text-blue-800 font-semibold">📖 ${puzzle.context}</p></div>` : ''}<div class="mb-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg"><p class="text-center text-2xl font-mono font-bold text-gray-800 break-words">${puzzle.chain}</p></div><p class="text-xl font-semibold text-gray-700 mb-4">This equation chain is:</p><div class="space-y-3 mb-6"><label class="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-blue-50 transition-all ${gameState.selectedAnswer === 'identity' ? 'border-blue-500 bg-blue-50' : ''}"><input type="radio" name="answer" value="identity" onchange="selectAnswer('identity')" ${gameState.selectedAnswer === 'identity' ? 'checked' : ''} class="w-5 h-5"><span class="ml-3 text-gray-700"><strong>Identity</strong> - True for all values of n</span></label><label class="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-green-50 transition-all ${gameState.selectedAnswer === 'conditional' ? 'border-green-500 bg-green-50' : ''}"><input type="radio" name="answer" value="conditional" onchange="selectAnswer('conditional')" ${gameState.selectedAnswer === 'conditional' ? 'checked' : ''} class="w-5 h-5"><span class="ml-3 text-gray-700"><strong>Conditional</strong> - True for specific value(s)</span></label><label class="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-red-50 transition-all ${gameState.selectedAnswer === 'invalid' ? 'border-red-500 bg-red-50' : ''}"><input type="radio" name="answer" value="invalid" onchange="selectAnswer('invalid')" ${gameState.selectedAnswer === 'invalid' ? 'checked' : ''} class="w-5 h-5"><span class="ml-3 text-gray-700"><strong>Invalid</strong> - No solution exists</span></label></div>${gameState.selectedAnswer === 'conditional' ? `<div class="mb-6 p-4 bg-green-50 rounded-lg"><label class="block text-gray-700 font-semibold mb-2">If conditional, what is n?</label><input type="number" id="nInput" value="${gameState.inputValue}" oninput="updateInput(this.value)" class="w-full p-3 border-2 border-green-300 rounded-lg text-xl text-center font-bold" placeholder="Enter n"></div>` : ''}${gameState.hintsUsed > 0 ? `<div class="mb-6 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg"><p class="font-semibold text-yellow-800">💡 Hint:</p><p class="text-yellow-700">Try simplifying each expression first and see if they're all equivalent.</p></div>` : ''}<div class="flex gap-3"><button onclick="useHint()" ${gameState.hintsUsed >= 3 ? 'disabled' : ''} class="flex-1 py-3 px-6 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 text-white font-semibold rounded-lg transition-all">💡 Hint (${3 - gameState.hintsUsed} left)</button><button onclick="checkAnswer()" ${!gameState.selectedAnswer || (gameState.selectedAnswer === 'conditional' && !gameState.inputValue) ? 'd
